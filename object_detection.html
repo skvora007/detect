@@ -38,30 +38,52 @@
     async function analyzeVideo(video, model, canvas) {
   const ctx = canvas.getContext("2d");
 
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  canvas.width = video.width;
+  canvas.height = video.height;
+  video.width = 640;
+  video.height = 480;
+  ctx.drawImage(video, 0, 0, video.width, video.height);
 
   const predictions = await model.detect(video);
 
-  if (predictions.length > 0) {
-    console.log('Objects detected:', predictions);
-  }
-
   // Clear old bounding boxes and labels
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, video.width, video.height);
 
   // Draw bounding boxes and labels for detected objects
   for (const prediction of predictions) {
-    ctx.beginPath();
-    ctx.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 4;
-    ctx.stroke();
+    const [x, y, width, height] = prediction.bbox;
 
-    ctx.font = "18px Arial";
-    ctx.fillStyle = "red";
-    ctx.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] - 10);
+    // Check if the object is within the rule of thirds grid
+    const ruleOfThirds = {
+      x: [video.width / 3, (video.width * 2) / 3],
+      y: [video.height / 3, (video.height * 2) / 3],
+    };
+
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+
+    const inRuleOfThirds =
+      centerX >= ruleOfThirds.x[0] &&
+      centerX <= ruleOfThirds.x[1] &&
+      centerY >= ruleOfThirds.y[0] &&
+      centerY <= ruleOfThirds.y[1];
+
+    // Check if the object size is within acceptable limits
+    // You can define your own rules for each object class
+    const acceptableSize = true; // Replace with your own logic
+
+    if (inRuleOfThirds && acceptableSize) {
+      ctx.beginPath();
+      ctx.rect(x, y, width, height);
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      ctx.font = "18px Arial";
+      ctx.fillStyle = "red";
+      ctx.fillText(prediction.class, x, y - 10);
+    }
   }
 
   requestAnimationFrame(() => analyzeVideo(video, model, canvas));
