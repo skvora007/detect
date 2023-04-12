@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Object Detection</title>
+</head>
+<body>
+  <video id="videoElement" autoplay muted playsinline></video>
+  <canvas id="canvas"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+  <script>
+    const video = document.getElementById("videoElement");
+    const canvas = document.getElementById("canvas");
+
+    async function setupCamera() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        video.srcObject = stream;
+        return new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+      }
+    }
+
+    async function loadModel() {
+      const model = await cocoSsd.load();
+      return model;
+    }
+
+    async function analyzeVideo(video, model, canvas) {
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const predictions = await model.detect(video);
+
+  if (predictions.length > 0) {
+    console.log('Objects detected:', predictions);
+  }
+
+  // Clear old bounding boxes and labels
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // Draw bounding boxes and labels for detected objects
+  for (const prediction of predictions) {
+    ctx.beginPath();
+    ctx.rect(prediction.bbox[0], prediction.bbox[1], prediction.bbox[2], prediction.bbox[3]);
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.font = "18px Arial";
+    ctx.fillStyle = "red";
+    ctx.fillText(prediction.class, prediction.bbox[0], prediction.bbox[1] - 10);
+  }
+
+  requestAnimationFrame(() => analyzeVideo(video, model, canvas));
+}
+
+
+
+    async function main() {
+      await setupCamera();
+      const model = await loadModel();
+      analyzeVideo(video, model, canvas);
+    }
+
+    main();
+  </script>
+</body>
+</html>
