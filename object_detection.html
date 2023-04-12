@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Object Detection</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
   <video id="videoElement" autoplay muted playsinline></video>
@@ -35,61 +41,66 @@
       return model;
     }
 
-    async function analyzeVideo(video, model, canvas) {
-  const ctx = canvas.getContext("2d");
+    function drawGrid(ctx, width, height) {
+      const lineWidth = 2;
+      const gridColor = 'rgba(255, 255, 255, 0.5)';
 
-  canvas.width = video.width;
-  canvas.height = video.height;
-  video.width = 640;
-  video.height = 480;
-  ctx.drawImage(video, 0, 0, video.width, video.height);
-
-  const predictions = await model.detect(video);
-
-  // Clear old bounding boxes and labels
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(video, 0, 0, video.width, video.height);
-
-  // Draw bounding boxes and labels for detected objects
-  for (const prediction of predictions) {
-    const [x, y, width, height] = prediction.bbox;
-
-    // Check if the object is within the rule of thirds grid
-    const ruleOfThirds = {
-      x: [video.width / 3, (video.width * 2) / 3],
-      y: [video.height / 3, (video.height * 2) / 3],
-    };
-
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-
-    const inRuleOfThirds =
-      centerX >= ruleOfThirds.x[0] &&
-      centerX <= ruleOfThirds.x[1] &&
-      centerY >= ruleOfThirds.y[0] &&
-      centerY <= ruleOfThirds.y[1];
-
-    // Check if the object size is within acceptable limits
-    // You can define your own rules for each object class
-    const acceptableSize = true; // Replace with your own logic
-
-    if (inRuleOfThirds && acceptableSize) {
+      // Vertical lines
       ctx.beginPath();
-      ctx.rect(x, y, width, height);
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 4;
+      ctx.moveTo(width / 3, 0);
+      ctx.lineTo(width / 3, height);
+      ctx.moveTo((width * 2) / 3, 0);
+      ctx.lineTo((width * 2) / 3, height);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = gridColor;
       ctx.stroke();
 
-      ctx.font = "18px Arial";
-      ctx.fillStyle = "red";
-      ctx.fillText(prediction.class, x, y - 10);
+      // Horizontal lines
+      ctx.beginPath();
+      ctx.moveTo(0, height / 3);
+      ctx.lineTo(width, height / 3);
+      ctx.moveTo(0, (height * 2) / 3);
+      ctx.lineTo(width, (height * 2) / 3);
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = gridColor;
+      ctx.stroke();
     }
-  }
 
-  requestAnimationFrame(() => analyzeVideo(video, model, canvas));
-}
+    async function analyzeVideo(video, model, canvas) {
+      const ctx = canvas.getContext("2d");
 
+      canvas.width = video.width;
+      canvas.height = video.height;
+      video.width = 640;
+      video.height = Math.round(640 / 2.39);
+      ctx.drawImage(video, 0, 0, video.width, video.height);
 
+      const predictions = await model.detect(video);
+
+      // Clear old bounding boxes and labels
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, video.width, video.height);
+
+      // Draw bounding boxes and labels for detected objects
+      for (const prediction of predictions) {
+        const [x, y, width, height] = prediction.bbox;
+
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "red";
+        ctx.fillText(prediction.class, x, y - 10);
+      }
+
+      // Draw the rule of thirds grid
+      drawGrid(ctx, video.width, video.height);
+
+      requestAnimationFrame(() => analyzeVideo(video, model, canvas));
+    }
 
     async function main() {
       await setupCamera();
@@ -101,3 +112,4 @@
   </script>
 </body>
 </html>
+
