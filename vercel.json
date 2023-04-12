@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/object_detection.html"
+      "source": "/(.*)",
+      "destination": "/object_detection.html"
     }
   ],
   "headers": [
