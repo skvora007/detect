@@ -5,15 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Object Detection</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
+    #container {
+      position: relative;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
     }
   </style>
 </head>
 <body>
-  <video id="videoElement" autoplay muted playsinline></video>
-  <canvas id="canvas"></canvas>
+  <div id="container">
+    <video id="videoElement" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
   <script>
@@ -41,29 +47,13 @@
       return model;
     }
 
-    function drawGrid(ctx, width, height) {
-      const lineWidth = 2;
-      const gridColor = 'rgba(255, 255, 255, 0.5)';
+    // ... (Остальные функции композиции)
 
-      // Vertical lines
-      ctx.beginPath();
-      ctx.moveTo(width / 3, 0);
-      ctx.lineTo(width / 3, height);
-      ctx.moveTo((width * 2) / 3, 0);
-      ctx.lineTo((width * 2) / 3, height);
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = gridColor;
-      ctx.stroke();
+    function isWithinTriangles(centerX, centerY, videoWidth, videoHeight) {
+      const leftTriangleHeight = centerY <= videoHeight * centerX / videoWidth;
+      const rightTriangleHeight = centerY <= videoHeight * (1 - centerX / videoWidth);
 
-      // Horizontal lines
-      ctx.beginPath();
-      ctx.moveTo(0, height / 3);
-      ctx.lineTo(width, height / 3);
-      ctx.moveTo(0, (height * 2) / 3);
-      ctx.lineTo(width, (height * 2) / 3);
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = gridColor;
-      ctx.stroke();
+      return leftTriangleHeight || rightTriangleHeight;
     }
 
     async function analyzeVideo(video, model, canvas) {
@@ -72,7 +62,7 @@
       canvas.width = video.width;
       canvas.height = video.height;
       video.width = 640;
-      video.height = Math.round(640 / 2.39);
+      video.height = 480;
       ctx.drawImage(video, 0, 0, video.width, video.height);
 
       const predictions = await model.detect(video);
@@ -85,19 +75,28 @@
       for (const prediction of predictions) {
         const [x, y, width, height] = prediction.bbox;
 
-        ctx.beginPath();
-        ctx.rect(x, y, width, height);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 4;
-        ctx.stroke();
+        const centerX = x + width / 2;
+        const centerY = y + height / 2;
 
-        ctx.font = "18px Arial";
-        ctx.fillStyle = "red";
-        ctx.fillText(prediction.class, x, y - 10);
+        const withinRuleOfThirds = isWithinRuleOfThirds(centerX, centerY, video.width, video.height);
+        const withinGoldenRatio = isWithinGoldenRatio(centerX, centerY, video.width, video.height);
+        const withinTriangles = isWithinTriangles(centerX, centerY, video.width, video.height);
+
+        // You can modify this line to apply different composition rules
+        const compositionSatisfied = withinRuleOfThirds || withinGoldenRatio || withinTriangles;
+
+        if (compositionSatisfied) {
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.strokeStyle = "red";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          ctx.font = "18px Arial";
+          ctx.fillStyle = "red";
+          ctx.fillText(prediction.class, x, y - 10);
+        }
       }
-
-      // Draw the rule of thirds grid
-      drawGrid(ctx, video.width, video.height);
 
       requestAnimationFrame(() => analyzeVideo(video, model, canvas));
     }
