@@ -8,10 +8,13 @@
   ],
   "headers": [
     {
-      "src": "/(.*)",
-      "headers": {
-        "Access-Control-Allow-Origin": "*"
-      }
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
     }
   ]
 }
